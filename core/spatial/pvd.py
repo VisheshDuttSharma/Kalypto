@@ -19,8 +19,8 @@ def encode(image_path, message, output_path):
     idx = 0
 
     new_pixels = []
-
     i = 0
+
     while i < len(pixels) - 1:
         r1, g1, b1 = pixels[i]
         r2, g2, b2 = pixels[i + 1]
@@ -28,26 +28,21 @@ def encode(image_path, message, output_path):
         diff = abs(r1 - r2)
         bits = get_bits(diff)
 
-        # Build value
         value = 0
         for _ in range(bits):
             if idx < len(binary):
                 value = (value << 1) | int(binary[idx])
                 idx += 1
 
-        # Embed in r2
         r2 = (r2 & ~((1 << bits) - 1)) | value
 
         new_pixels.extend([(r1, g1, b1), (r2, g2, b2)])
-
         i += 2
 
         if idx >= len(binary):
             break
 
-    # Add remaining pixels
     new_pixels.extend(pixels[i:])
-
     img.putdata(new_pixels)
 
     output_path = normalize_output_path(output_path)
@@ -64,10 +59,9 @@ def decode(image_path):
         img = Image.open(image_path).convert("RGB")
     except Exception as e:
         print("❌ Error opening image:", e)
-        return
+        return None
 
     pixels = list(img.getdata())
-
     binary = ""
 
     i = 0
@@ -85,3 +79,5 @@ def decode(image_path):
 
     message = binary_to_text(binary)
     print("🔓 Decoded message:", message)
+
+    return message  # 🔥 IMPORTANT FIX

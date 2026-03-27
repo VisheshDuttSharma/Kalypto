@@ -1,0 +1,8 @@
+  if length < 20:
+        return "xor"
+    elif length < 100:
+        return "fernet"
+    elif length < 500:
+        return "aes"
+    else:
+        return "chacha20"

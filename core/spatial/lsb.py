@@ -44,7 +44,7 @@ def decode(image_path):
         img = Image.open(image_path).convert("RGB")
     except Exception as e:
         print("❌ Error opening image:", e)
-        return
+        return None
 
     pixels = img.load()
     width, height = img.size
@@ -58,3 +58,5 @@ def decode(image_path):
 
     message = binary_to_text(binary)
     print("🔓 Decoded message:", message)
+
+    return message  # 🔥 IMPORTANT FIX

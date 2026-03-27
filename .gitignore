@@ -1,2 +1,12 @@
+# Python cache
 __pycache__/
 *.pyc
+
+# OS files
+.DS_Store
+
+# Images (optional depending on use)
+assets/output/
+
+# Virtual env
+venv/
