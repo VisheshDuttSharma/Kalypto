@@ -1,3 +1,8 @@
+Got you — here is a **single clean README document**, no segmentation, no extra labels, just copy-paste ready.
+
+---
+
+````markdown
 # Kalypto
 
 Kalypto is a modular steganography framework for covert data embedding within digital media. The current implementation focuses on spatial-domain image steganography, incorporating multiple embedding strategies with an emphasis on imperceptibility, payload capacity, and extensibility.
@@ -12,155 +17,121 @@ Kalypto implements multiple spatial-domain techniques to manipulate pixel-level 
 
 ---
 
+## Version 1.1 — Enhancements
+
+Kalypto now includes an integrated encryption layer and file-based payload handling, significantly improving reliability and practical usability.
+
+The system supports multiple encryption algorithms including AES, ChaCha20, XOR, and Fernet. Users can either manually select an encryption method or allow the system to automatically choose one based on the nature of the input data.
+
+File-based payload input is now supported. The system can ingest content from formats such as `.txt`, `.csv`, `.json`, `.pdf`, and `.docx` (text extraction). File types are automatically detected, and encryption strategies can adapt accordingly.
+
+The internal pipeline has been improved to ensure reliable handling of encrypted data. The previous delimiter-based extraction mechanism has been removed and replaced with a fixed-length header system, ensuring accurate payload reconstruction. Data loss issues caused by unsafe string decoding have been resolved using a base64-based transport layer.
+
+---
+
 ## Core Capabilities
 
-* Multi-technique spatial steganography:
+Kalypto supports multiple spatial-domain steganography techniques:
 
-  * Least Significant Bit (LSB)
-  * Adaptive LSB
-  * Pixel Value Differencing (PVD)
-* Bidirectional pipeline:
+- Least Significant Bit (LSB)
+- Adaptive LSB
+- Pixel Value Differencing (PVD)
 
-  * Payload embedding (encoding)
-  * Payload extraction (decoding)
-* Image-based carrier system
-* Modular architecture for future expansion
+The system provides a bidirectional pipeline for:
+
+- Payload embedding (encoding)
+- Payload extraction (decoding)
+
+It is designed with a modular architecture, allowing seamless integration of additional algorithms, domains, and processing layers.
 
 ---
 
 ## Architecture
 
 Kalypto/
-
-├── core/
-
-│   ├── spatial/              # Spatial domain algorithms (LSB, Adaptive, PVD)
-
-│   └── **init**.py
-
 │
-├── main_interface.py         # Execution entry point / orchestration layer
-
-└── test_image.jpg            # Sample carrier image
+├── core/
+│   └── spatial/        # LSB, Adaptive LSB, PVD implementations
+│
+├── crypto/             # Encryption modules (AES, ChaCha20, XOR, Fernet)
+│
+├── engine/             # Encoding and decoding pipeline
+│
+├── utils/              # File handling and helper utilities
+│
+├── main_interface.py   # CLI entry point
+│
+└── assets/             # Input and output resources
 
 ---
 
 ## Technical Implementation
 
-### 1. Least Significant Bit (LSB)
+Least Significant Bit (LSB) modifies the least significant bits of pixel values, introducing minimal perceptual distortion while maintaining linear time complexity.
 
-* Replaces the least significant bit of pixel intensity values
-* Each RGB pixel can encode up to 3 bits of payload
-* Minimal distortion due to low-weight bit modification
-* Time complexity: O(n) over pixel count
+Adaptive LSB dynamically adjusts embedding strategies based on local pixel characteristics, improving imperceptibility and reducing statistical detectability.
 
----
-
-### 2. Adaptive LSB
-
-* Dynamically adjusts embedding based on local pixel characteristics
-* Typically considers:
-
-  * Edge regions vs smooth regions
-  * Intensity variance
-* Objective:
-
-  * Increase imperceptibility
-  * Reduce statistical detectability
-
----
-
-### 3. Pixel Value Differencing (PVD)
-
-* Utilizes differences between adjacent pixel values
-* Embedding capacity varies based on pixel intensity differences:
-
-  * Larger differences → higher capacity
-  * Smaller differences → lower embedding
-* Preserves image quality while improving payload capacity
+Pixel Value Differencing (PVD) uses the difference between adjacent pixel values to determine embedding capacity, balancing payload size and image quality.
 
 ---
 
 ## Data Flow
 
-1. Input image is loaded as pixel matrix
-2. Payload is converted to binary stream
-3. Selected steganographic algorithm embeds bits into pixel data
-4. Modified image is generated as stego-object
-5. Decoding reverses the process to reconstruct the payload
+Input File → Preprocessing → Encryption → Embedding → Stego Image  
+Stego Image → Extraction → Decryption → Output
 
 ---
 
 ## Usage
 
-Run the main interface:
+Run the CLI interface:
 
 ```bash
-python main_interface.py
-```
+python -m main_interface
+````
 
-Ensure the carrier image is present in the working directory.
+Ensure that input files and images are placed in the appropriate directories within the project.
 
 ---
 
 ## Dependencies
 
+Install required libraries:
+
 ```bash
-pip install pillow
+pip install pillow pycryptodome cryptography
 ```
+
+---
+
+## Current Limitations
+
+The current system is not fully binary-safe. It relies on base64 encoding as an intermediate layer to safely transport data through the steganography pipeline. This introduces overhead and limits efficiency when handling large binary files such as videos, archives, or executables.
 
 ---
 
 ## Roadmap
 
-Planned enhancements:
+The next phase of development focuses on implementing true binary steganography. This will involve direct byte-level embedding, removal of base64 dependency, and full support for arbitrary file types including `.mp4`, `.zip`, and `.exe`.
 
-### Advanced Embedding
-
-* Transform domain techniques:
-
-  * Discrete Cosine Transform (DCT)
-  * Discrete Wavelet Transform (DWT)
-
-### Multimedia Support
-
-* Audio steganography (WAV/MP3)
-* Video steganography (frame-level embedding)
-
-### Security Layer
-
-* AES-256 encryption for payload protection
-* RSA-based key exchange
-
-### Optimization
-
-* Payload compression
-* Adaptive embedding heuristics
-
-### Steganalysis & Evaluation
-
-* PSNR (Peak Signal-to-Noise Ratio)
-* Chi-Square statistical analysis
-* Detection resistance benchmarking
+Future enhancements include transform-domain techniques such as Discrete Cosine Transform (DCT) and Discrete Wavelet Transform (DWT), multimedia steganography for audio and video, hybrid encryption models combining AES and RSA, and steganalysis capabilities including PSNR and chi-square evaluation.
 
 ---
 
 ## Security Perspective
 
-Kalypto is designed with a cybersecurity-oriented approach, focusing on:
-
-* Covert communication techniques
-* Evasion of basic detection mechanisms
-* Integration with offensive and defensive security workflows
+Kalypto is designed with a cybersecurity-oriented approach, focusing on covert communication techniques, resistance to detection mechanisms, and applicability in both offensive and defensive security research.
 
 ---
 
 ## Status
 
-Active development — foundational spatial techniques implemented, advanced modules in progress.
+Active development. Spatial steganography, encryption integration, and file-based payload handling are implemented. Binary steganography and advanced modules are currently in progress.
 
 ---
 
 ## Author
 
 Vishesh Dutt Sharma
+
+```
