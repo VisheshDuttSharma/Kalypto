@@ -1,7 +1,3 @@
-Got you — here is a **single clean README document**, no segmentation, no extra labels, just copy-paste ready.
-
----
-
 ````markdown
 # Kalypto
 
