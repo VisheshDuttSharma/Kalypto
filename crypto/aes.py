@@ -1,38 +1,36 @@
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-import base64
 
 
-def pad(data):
+def pad(data: bytes):
     pad_len = 16 - len(data) % 16
-    return data + chr(pad_len) * pad_len
+    return data + bytes([pad_len] * pad_len)
 
 
-def unpad(data):
-    pad_len = ord(data[-1])
+def unpad(data: bytes):
+    pad_len = data[-1]
     return data[:-pad_len]
 
 
-def encrypt(message, key):
+def encrypt(data: bytes, key: str) -> bytes:
     key = key.ljust(16)[:16].encode()
 
     cipher = AES.new(key, AES.MODE_CBC)
     iv = cipher.iv
 
-    padded = pad(message)
-    ciphertext = cipher.encrypt(padded.encode())
+    padded = pad(data)
+    ciphertext = cipher.encrypt(padded)
 
-    return base64.b64encode(iv + ciphertext).decode()
+    return iv + ciphertext
 
 
-def decrypt(encoded_message, key):
+def decrypt(data: bytes, key: str) -> bytes:
     key = key.ljust(16)[:16].encode()
 
-    raw = base64.b64decode(encoded_message)
-    iv = raw[:16]
-    ciphertext = raw[16:]
+    iv = data[:16]
+    ciphertext = data[16:]
 
     cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-    decrypted = cipher.decrypt(ciphertext).decode()
+    decrypted = cipher.decrypt(ciphertext)
 
     return unpad(decrypted)

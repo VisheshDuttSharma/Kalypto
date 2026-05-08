@@ -1,76 +1,80 @@
 from PIL import Image
-from .utils import text_to_binary, binary_to_text, add_delimiter, normalize_output_path
 
 
-def get_bits(x, y):
-    return 2 if (x + y) % 2 == 0 else 1
+def get_intensity(pixel):
+    return sum(pixel) // 3
 
 
-def encode(image_path, message, output_path):
-    try:
-        img = Image.open(image_path).convert("RGB")
-    except Exception as e:
-        print("❌ Error opening image:", e)
-        return
-
+def embed_bits(image_path, bits, output_path):
+    img = Image.open(image_path)
     pixels = img.load()
+
     width, height = img.size
 
-    binary = add_delimiter(text_to_binary(message))
-    idx = 0
+    if len(bits) > width * height * 3:
+        raise ValueError("Payload too large")
 
-    max_capacity = width * height * 2
-    if len(binary) > max_capacity:
-        print("❌ Error: Message too large for this image.")
-        return
+    idx = 0
 
     for y in range(height):
         for x in range(width):
-            if idx >= len(binary):
+            if idx >= len(bits):
                 break
 
             r, g, b = pixels[x, y]
-            bits = get_bits(x, y)
+            intensity = get_intensity((r, g, b))
 
-            value = 0
-            for i in range(bits):
-                if idx < len(binary):
-                    value = (value << 1) | int(binary[idx])
+            channels = [r, g, b]
+
+            # High intensity → embed more aggressively
+            if intensity > 128:
+                channels_to_use = 3
+            else:
+                channels_to_use = 1
+
+            for i in range(channels_to_use):
+                if idx < len(bits):
+                    channels[i] = (channels[i] & ~1) | bits[idx]
                     idx += 1
 
-            r = (r & ~((1 << bits) - 1)) | value
-            pixels[x, y] = (r, g, b)
+            pixels[x, y] = tuple(channels)
 
-    output_path = normalize_output_path(output_path)
+        if idx >= len(bits):
+            break
 
-    try:
-        img.save(output_path, format="PNG")
-        print(f"✅ Adaptive LSB Saved as {output_path}")
-    except Exception as e:
-        print("❌ Error saving image:", e)
+    img.save(output_path)
 
 
-def decode(image_path):
-    try:
-        img = Image.open(image_path).convert("RGB")
-    except Exception as e:
-        print("❌ Error opening image:", e)
-        return None
-
+def extract_bits(image_path, num_bits):
+    img = Image.open(image_path)
     pixels = img.load()
+
     width, height = img.size
 
-    binary = ""
+    bits = []
+    idx = 0
 
     for y in range(height):
         for x in range(width):
+            if idx >= num_bits:
+                break
+
             r, g, b = pixels[x, y]
-            bits = get_bits(x, y)
+            intensity = get_intensity((r, g, b))
 
-            value = r & ((1 << bits) - 1)
-            binary += format(value, f'0{bits}b')
+            channels = [r, g, b]
 
-    message = binary_to_text(binary)
-    print("🔓 Decoded message:", message)
+            if intensity > 128:
+                channels_to_use = 3
+            else:
+                channels_to_use = 1
 
-    return message  # 🔥 IMPORTANT FIX
+            for i in range(channels_to_use):
+                if idx < num_bits:
+                    bits.append(channels[i] & 1)
+                    idx += 1
+
+        if idx >= num_bits:
+            break
+
+    return bits

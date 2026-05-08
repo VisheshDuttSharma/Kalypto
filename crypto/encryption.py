@@ -12,12 +12,8 @@ CRYPTO_ALGOS = {
 }
 
 
-def auto_select(message, file_type=None):
-    if file_type:
-        from utils.file_handler import suggest_crypto
-        return suggest_crypto(file_type)
-
-    length = len(message)
+def auto_select(data: bytes, file_type=None):
+    length = len(data)
 
     if length < 20:
         return "xor"
@@ -29,22 +25,17 @@ def auto_select(message, file_type=None):
         return "chacha20"
 
 
-def encrypt_message(message, key, algo=None, file_type=None):
+def encrypt_message(data: bytes, key, algo=None, file_type=None):
     if algo is None:
-        algo = auto_select(message, file_type)
+        algo = auto_select(data, file_type)
 
-    if algo not in CRYPTO_ALGOS:
-        raise ValueError(f"Unsupported crypto algorithm: {algo}")
+    encrypted = CRYPTO_ALGOS[algo]["encrypt"](data, key)
 
-    encrypted = CRYPTO_ALGOS[algo]["encrypt"](message, key)
-
-    return f"{algo}:{encrypted}"
+    return algo.encode() + b":" + encrypted
 
 
-def decrypt_message(encoded_message, key):
-    algo, payload = encoded_message.split(":", 1)
-
-    if algo not in CRYPTO_ALGOS:
-        raise ValueError(f"Unsupported crypto algorithm: {algo}")
+def decrypt_message(data: bytes, key):
+    algo, payload = data.split(b":", 1)
+    algo = algo.decode()
 
     return CRYPTO_ALGOS[algo]["decrypt"](payload, key)

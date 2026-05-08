@@ -1,62 +1,59 @@
 from PIL import Image
-from .utils import text_to_binary, binary_to_text, add_delimiter, normalize_output_path
 
-def encode(image_path, message, output_path):
-    try:
-        img = Image.open(image_path).convert("RGB")
-    except Exception as e:
-        print("❌ Error opening image:", e)
-        return
 
+def embed_bits(image_path, bits, output_path):
+    img = Image.open(image_path)
     pixels = img.load()
+
     width, height = img.size
 
-    binary = add_delimiter(text_to_binary(message))
-    idx = 0
+    if len(bits) > width * height * 3:
+        raise ValueError("Payload too large")
 
-    max_capacity = width * height
-    if len(binary) > max_capacity:
-        print("❌ Error: Message too large for this image.")
-        return
+    idx = 0
 
     for y in range(height):
         for x in range(width):
-            if idx >= len(binary):
+            if idx >= len(bits):
                 break
 
             r, g, b = pixels[x, y]
-            r = (r & ~1) | int(binary[idx])
-            idx += 1
 
-            pixels[x, y] = (r, g, b)
+            channels = [r, g, b]
 
-    output_path = normalize_output_path(output_path)
+            for i in range(3):
+                if idx < len(bits):
+                    channels[i] = (channels[i] & ~1) | bits[idx]
+                    idx += 1
 
-    try:
-        img.save(output_path, format="PNG")
-        print(f"✅ Saved as {output_path}")
-    except Exception as e:
-        print("❌ Error saving image:", e)
+            pixels[x, y] = tuple(channels)
+
+        if idx >= len(bits):
+            break
+
+    img.save(output_path)
 
 
-def decode(image_path):
-    try:
-        img = Image.open(image_path).convert("RGB")
-    except Exception as e:
-        print("❌ Error opening image:", e)
-        return None
-
+def extract_bits(image_path, num_bits):
+    img = Image.open(image_path)
     pixels = img.load()
+
     width, height = img.size
 
-    binary = ""
+    bits = []
+    idx = 0
 
     for y in range(height):
         for x in range(width):
-            r, g, b = pixels[x, y]
-            binary += str(r & 1)
+            if idx >= num_bits:
+                break
 
-    message = binary_to_text(binary)
-    print("🔓 Decoded message:", message)
+            for val in pixels[x, y]:
+                if idx < num_bits:
+                    bits.append(val & 1)
+                    idx += 1
 
-    return message  # 🔥 IMPORTANT FIX
+        if idx >= num_bits:
+            break
+
+    return bits

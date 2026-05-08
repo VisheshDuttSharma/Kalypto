@@ -1,83 +1,93 @@
 from PIL import Image
-from .utils import text_to_binary, binary_to_text, add_delimiter, normalize_output_path
 
 
-def get_bits(diff):
-    return 2 if diff < 32 else 3
+def get_range(diff):
+    if diff < 8:
+        return 1
+    elif diff < 16:
+        return 2
+    elif diff < 32:
+        return 3
+    else:
+        return 4
 
 
-def encode(image_path, message, output_path):
-    try:
-        img = Image.open(image_path).convert("RGB")
-    except Exception as e:
-        print("❌ Error opening image:", e)
-        return
+def embed_bits(image_path, bits, output_path):
+    img = Image.open(image_path)
+    pixels = img.load()
 
-    pixels = list(img.getdata())
+    width, height = img.size
 
-    binary = add_delimiter(text_to_binary(message))
     idx = 0
 
-    new_pixels = []
-    i = 0
+    for y in range(height):
+        for x in range(0, width - 1, 2):
+            if idx >= len(bits):
+                break
 
-    while i < len(pixels) - 1:
-        r1, g1, b1 = pixels[i]
-        r2, g2, b2 = pixels[i + 1]
+            p1 = list(pixels[x, y])
+            p2 = list(pixels[x + 1, y])
 
-        diff = abs(r1 - r2)
-        bits = get_bits(diff)
+            for c in range(3):
+                if idx >= len(bits):
+                    break
 
-        value = 0
-        for _ in range(bits):
-            if idx < len(binary):
-                value = (value << 1) | int(binary[idx])
-                idx += 1
+                diff = abs(p1[c] - p2[c])
+                n_bits = get_range(diff)
 
-        r2 = (r2 & ~((1 << bits) - 1)) | value
+                value = 0
+                for _ in range(n_bits):
+                    if idx < len(bits):
+                        value = (value << 1) | bits[idx]
+                        idx += 1
 
-        new_pixels.extend([(r1, g1, b1), (r2, g2, b2)])
-        i += 2
+                # Modify pixel difference
+                if p1[c] >= p2[c]:
+                    p1[c] = min(255, p1[c] + value)
+                else:
+                    p1[c] = max(0, p1[c] - value)
 
-        if idx >= len(binary):
+            pixels[x, y] = tuple(p1)
+            pixels[x + 1, y] = tuple(p2)
+
+        if idx >= len(bits):
             break
 
-    new_pixels.extend(pixels[i:])
-    img.putdata(new_pixels)
-
-    output_path = normalize_output_path(output_path)
-
-    try:
-        img.save(output_path, format="PNG")
-        print(f"✅ PVD Saved as {output_path}")
-    except Exception as e:
-        print("❌ Error saving image:", e)
+    img.save(output_path)
 
 
-def decode(image_path):
-    try:
-        img = Image.open(image_path).convert("RGB")
-    except Exception as e:
-        print("❌ Error opening image:", e)
-        return None
+def extract_bits(image_path, num_bits):
+    img = Image.open(image_path)
+    pixels = img.load()
 
-    pixels = list(img.getdata())
-    binary = ""
+    width, height = img.size
 
-    i = 0
-    while i < len(pixels) - 1:
-        r1, g1, b1 = pixels[i]
-        r2, g2, b2 = pixels[i + 1]
+    bits = []
+    idx = 0
 
-        diff = abs(r1 - r2)
-        bits = get_bits(diff)
+    for y in range(height):
+        for x in range(0, width - 1, 2):
+            if idx >= num_bits:
+                break
 
-        value = r2 & ((1 << bits) - 1)
-        binary += format(value, f'0{bits}b')
+            p1 = pixels[x, y]
+            p2 = pixels[x + 1, y]
 
-        i += 2
+            for c in range(3):
+                if idx >= num_bits:
+                    break
 
-    message = binary_to_text(binary)
-    print("🔓 Decoded message:", message)
+                diff = abs(p1[c] - p2[c])
+                n_bits = get_range(diff)
 
-    return message  # 🔥 IMPORTANT FIX
+                value = diff
+
+                for i in range(n_bits - 1, -1, -1):
+                    if idx < num_bits:
+                        bits.append((value >> i) & 1)
+                        idx += 1
+
+        if idx >= num_bits:
+            break
+
+    return bits

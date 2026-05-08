@@ -3,15 +3,15 @@ import base64
 import hashlib
 
 
-def derive_key(key):
+def derive_key(key: str):
     return base64.urlsafe_b64encode(hashlib.sha256(key.encode()).digest())
 
 
-def encrypt(message, key):
+def encrypt(data: bytes, key: str) -> bytes:
     f = Fernet(derive_key(key))
-    return f.encrypt(message.encode()).decode()
+    return f.encrypt(data)
 
 
-def decrypt(encoded_message, key):
+def decrypt(data: bytes, key: str) -> bytes:
     f = Fernet(derive_key(key))
-    return f.decrypt(encoded_message.encode()).decode()
+    return f.decrypt(data)

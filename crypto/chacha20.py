@@ -1,22 +1,20 @@
 from Crypto.Cipher import ChaCha20
-import base64
 
 
-def encrypt(message, key):
+def encrypt(data: bytes, key: str) -> bytes:
     key = key.ljust(32)[:32].encode()
 
     cipher = ChaCha20.new(key=key)
-    ciphertext = cipher.encrypt(message.encode())
+    ciphertext = cipher.encrypt(data)
 
-    return base64.b64encode(cipher.nonce + ciphertext).decode()
+    return cipher.nonce + ciphertext
 
 
-def decrypt(encoded_message, key):
+def decrypt(data: bytes, key: str) -> bytes:
     key = key.ljust(32)[:32].encode()
 
-    raw = base64.b64decode(encoded_message)
-    nonce = raw[:8]
-    ciphertext = raw[8:]
+    nonce = data[:8]
+    ciphertext = data[8:]
 
     cipher = ChaCha20.new(key=key, nonce=nonce)
-    return cipher.decrypt(ciphertext).decode()
+    return cipher.decrypt(ciphertext)
