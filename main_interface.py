@@ -5,7 +5,8 @@ import sys
 import os
 import platform
 from datetime import datetime
-
+from widgets.image_label import SmartImageLabel
+from ui.pages.compare_page import build_compare_page
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QPixmap, QDesktopServices
 from PySide6.QtWidgets import (
@@ -26,6 +27,12 @@ except:
     PDF_ENABLED = False
 
 from engine.pipeline import StegoPipeline, PipelineConfig
+
+from utils.image_utils import (
+    load_pix,
+    generate_heatmap,
+    generate_bitplane
+)
 
 
 # =====================================================
@@ -99,14 +106,6 @@ QListWidget::item:selected { background:#4cc9f033; }
 # HELPERS
 # =====================================================
 
-def load_pix(path, w=600, h=450):
-    if os.path.exists(path):
-        return QPixmap(path).scaled(
-            w, h,
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation
-        )
-    return QPixmap()
 
 
 # =====================================================
@@ -161,7 +160,7 @@ class KalyptoElite(QMainWindow):
         self.pages.addWidget(self.dashboard_page())
         self.pages.addWidget(self.embed_page())
         self.pages.addWidget(self.extract_page())
-        self.pages.addWidget(self.compare_page())
+        self.pages.addWidget(build_compare_page(self))
         self.pages.addWidget(self.about_page())
 
         self.nav.currentRowChanged.connect(
@@ -407,89 +406,6 @@ class KalyptoElite(QMainWindow):
     # -------------------------------------------------
     # COMPARE
     # -------------------------------------------------
-    def compare_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
-
-        title = QLabel("COMPARE LAB")
-        title.setStyleSheet("""
-            font-size:24px;
-            font-weight:bold;
-            color:#00ffaa;
-        """)
-        layout.addWidget(title)
-
-        self.tabs = QTabWidget()
-
-        # Side by side
-        tab1 = QWidget()
-        v1 = QVBoxLayout(tab1)
-
-        row = QHBoxLayout()
-
-        self.original_label = QLabel("Original")
-        self.stego_label = QLabel("Stego")
-
-        self.original_label.setAlignment(Qt.AlignCenter)
-        self.stego_label.setAlignment(Qt.AlignCenter)
-
-        row.addWidget(self.original_label)
-        row.addWidget(self.stego_label)
-
-        v1.addLayout(row)
-
-        self.zoom = QSlider(Qt.Horizontal)
-        self.zoom.setRange(250, 1000)
-        self.zoom.setValue(600)
-        self.zoom.valueChanged.connect(
-            self.update_zoom
-        )
-
-        v1.addWidget(self.zoom)
-
-        self.tabs.addTab(tab1, "Compare")
-
-        # Heatmap
-        self.heat_label = QLabel("Heatmap")
-        self.heat_label.setAlignment(Qt.AlignCenter)
-        self.tabs.addTab(self.heat_label, "Heatmap")
-
-        # Bit plane
-        tab3 = QWidget()
-        v3 = QVBoxLayout(tab3)
-
-        self.bit_combo = QComboBox()
-        self.bit_combo.addItems(
-            [f"Bit Plane {i}" for i in range(8)]
-        )
-        self.bit_combo.currentIndexChanged.connect(
-            self.render_bitplane
-        )
-
-        self.bit_label = QLabel("Bit Plane")
-        self.bit_label.setAlignment(Qt.AlignCenter)
-
-        v3.addWidget(self.bit_combo)
-        v3.addWidget(self.bit_label)
-
-        self.tabs.addTab(tab3, "Bit Planes")
-
-        # Report
-        tab4 = QWidget()
-        v4 = QVBoxLayout(tab4)
-
-        self.report_box = QTextEdit()
-
-        pdf = QPushButton("Export PDF")
-        pdf.clicked.connect(self.export_pdf)
-
-        v4.addWidget(self.report_box)
-        v4.addWidget(pdf)
-
-        self.tabs.addTab(tab4, "Report")
-
-        layout.addWidget(self.tabs)
-        return page
 
     # -------------------------------------------------
     # ABOUT
@@ -696,30 +612,19 @@ class KalyptoElite(QMainWindow):
 
         plane.save("bitplane.png")
 
-        self.bit_label.setPixmap(
-            load_pix("bitplane.png", 900, 700)
-        )
+        self.bit_label.set_image("bitplane.png")
 
     def load_compare(self, original, stego):
         self.last_original = original
         self.last_stego = stego
 
-        self.original_label.setPixmap(
-            load_pix(original, 600, 600)
-        )
-        self.stego_label.setPixmap(
-            load_pix(stego, 600, 600)
-        )
+        self.original_label.set_image(original)
+        
+        self.stego_label.set_image(stego)
 
-        img1 = Image.open(original).convert("RGB")
-        img2 = Image.open(stego).convert("RGB")
+        heatmap_path = generate_heatmap(original, stego)
 
-        diff = ImageChops.difference(img1, img2)
-        diff.save("heatmap.png")
-
-        self.heat_label.setPixmap(
-            load_pix("heatmap.png", 900, 700)
-        )
+        self.heat_label.set_image(heatmap_path)
 
         self.render_bitplane()
 
