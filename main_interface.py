@@ -4,103 +4,55 @@
 import sys
 import os
 import platform
-from datetime import datetime
-from widgets.image_label import SmartImageLabel
 from ui.pages.compare_page import build_compare_page
-from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QPixmap, QDesktopServices
+from ui.pages.embed_page import build_embed_page
+from ui.pages.extract_page import build_extract_page
+from services.stego_service import StegoService
+from services.compare_service import CompareService
+from ui.themes import STYLE, ALT_STYLE
+from services.export_service import ExportService
+from core.logger import Logger
+from core.app_state import AppState
+from workers.compare_worker import CompareWorker
+from ui.pages.dashboard_page import (
+    build_dashboard_page
+)
+from ui.pages.about_page import (
+    build_about_page
+)
+from controllers.embed_controller import (
+    EmbedController
+)
+from widgets.sidebar import Sidebar
+from widgets.log_panel import (
+    LogPanel
+)
+from utils.temp_manager import (
+    clear_temp
+)
+from PySide6.QtCore import (
+    Qt,
+    QTimer,
+    QThread
+)
+from core.settings_manager import (
+    SettingsManager
+)
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QLabel, QPushButton,
-    QTextEdit, QLineEdit, QComboBox, QListWidget,
-    QStackedWidget, QHBoxLayout, QVBoxLayout, QFormLayout,
-    QMessageBox, QTabWidget, QFileDialog, QSplashScreen,
-    QFrame, QSlider
+    QApplication, QMainWindow, QWidget, QLabel,
+    QStackedWidget, QHBoxLayout, QVBoxLayout,
+    QMessageBox, QFileDialog, QSplashScreen,
 )
 
-from PIL import Image, ImageChops
-
-try:
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import A4
-    PDF_ENABLED = True
-except:
-    PDF_ENABLED = False
-
-from engine.pipeline import StegoPipeline, PipelineConfig
-
+from PIL import Image
 from utils.image_utils import (
     load_pix,
-    generate_heatmap,
-    generate_bitplane
 )
 
 
 # =====================================================
 # STYLES
 # =====================================================
-
-STYLE = """
-QMainWindow, QWidget {
-    background:#07111f;
-    color:#dff;
-    font-family:Segoe UI;
-    font-size:11pt;
-}
-QPushButton {
-    background:#0c2235;
-    border:1px solid #00ffaa;
-    padding:10px;
-    border-radius:8px;
-    min-height:40px;
-}
-QPushButton:hover {
-    background:#163754;
-}
-QLineEdit, QTextEdit, QComboBox, QListWidget, QTabWidget::pane {
-    background:#0d1b2a;
-    color:white;
-    border:1px solid #29465b;
-    padding:6px;
-}
-QListWidget::item { padding:12px; }
-QListWidget::item:selected { background:#00ffaa33; }
-QTabBar::tab {
-    background:#0c2235;
-    color:white;
-    padding:8px 14px;
-    border:1px solid #29465b;
-}
-QTabBar::tab:selected {
-    border:1px solid #00ffaa;
-}
-"""
-
-ALT_STYLE = """
-QMainWindow, QWidget {
-    background:#0b1020;
-    color:#e8f6ff;
-    font-family:Segoe UI;
-    font-size:11pt;
-}
-QPushButton {
-    background:#14213d;
-    border:1px solid #4cc9f0;
-    padding:10px;
-    border-radius:8px;
-    min-height:40px;
-}
-QPushButton:hover {
-    background:#1d2f55;
-}
-QLineEdit, QTextEdit, QComboBox, QListWidget, QTabWidget::pane {
-    background:#10182d;
-    color:white;
-    border:1px solid #355070;
-    padding:6px;
-}
-QListWidget::item:selected { background:#4cc9f033; }
-"""
-
 
 # =====================================================
 # HELPERS
@@ -115,12 +67,25 @@ QListWidget::item:selected { background:#4cc9f033; }
 class KalyptoElite(QMainWindow):
     def __init__(self):
         super().__init__()
+        clear_temp()
+        self.stego_service = StegoService()
+        self.compare_service = CompareService()
+        self.export_service = ExportService()
 
-        self.logs = []
-        self.dark_mode = True
+        self.logger = Logger()
+        self.state = AppState()
+        self.settings = SettingsManager()
 
         self.setWindowTitle("Kalypto Elite")
-        self.setStyleSheet(STYLE)
+
+        if self.settings.get("dark_mode"):
+            self.state.dark_mode = True
+            self.setStyleSheet(STYLE)
+
+        else:
+            self.state.dark_mode = False
+            self.setStyleSheet(ALT_STYLE)
+
         self.setAcceptDrops(True)
 
         self.init_ui()
@@ -134,15 +99,11 @@ class KalyptoElite(QMainWindow):
 
         top = QHBoxLayout()
 
-        self.nav = QListWidget()
-        self.nav.setFixedWidth(250)
-        self.nav.addItems([
-            "Dashboard",
-            "Embed Secret",
-            "Extract Secret",
-            "Compare Lab",
-            "About"
-        ])
+        self.nav = Sidebar()
+        self.embed_controller = EmbedController(
+            self,
+            self.stego_service
+        )
 
         self.pages = QStackedWidget()
 
@@ -151,17 +112,23 @@ class KalyptoElite(QMainWindow):
 
         main.addLayout(top)
 
-        self.log_panel = QTextEdit()
-        self.log_panel.setReadOnly(True)
-        self.log_panel.setMaximumHeight(120)
-        self.log_panel.setPlaceholderText("Operation Logs...")
+        self.log_panel = LogPanel()
         main.addWidget(self.log_panel)
+        self.status_label = QLabel("Ready")
 
-        self.pages.addWidget(self.dashboard_page())
-        self.pages.addWidget(self.embed_page())
-        self.pages.addWidget(self.extract_page())
+        self.status_label.setStyleSheet("""
+            color:#00ffaa;
+            padding:6px;
+            font-weight:bold;
+        """)
+
+        main.addWidget(self.status_label)
+
+        self.pages.addWidget(build_dashboard_page(self))
+        self.pages.addWidget(build_embed_page(self))
+        self.pages.addWidget(build_extract_page(self))
         self.pages.addWidget(build_compare_page(self))
-        self.pages.addWidget(self.about_page())
+        self.pages.addWidget(build_about_page(self))
 
         self.nav.currentRowChanged.connect(
             self.pages.setCurrentIndex
@@ -172,11 +139,15 @@ class KalyptoElite(QMainWindow):
     # LOGS
     # -------------------------------------------------
     def add_log(self, text):
-        stamp = datetime.now().strftime("%H:%M:%S")
-        self.logs.append(f"[{stamp}] {text}")
+
+        self.logger.log(text)
+
         self.log_panel.setText(
-            "\n".join(self.logs[-12:])
+            self.logger.latest()
         )
+    def set_status(self, text):
+
+        self.status_label.setText(text)
 
     # -------------------------------------------------
     # DRAG DROP
@@ -205,203 +176,29 @@ class KalyptoElite(QMainWindow):
     # THEME
     # -------------------------------------------------
     def toggle_theme(self):
-        self.dark_mode = not self.dark_mode
+
+        self.state.dark_mode = (
+            not self.state.dark_mode
+        )
+        self.settings.set("dark_mode", self.state.dark_mode)
+
         self.setStyleSheet(
-            STYLE if self.dark_mode else ALT_STYLE
+            STYLE
+            if self.state.dark_mode
+            else ALT_STYLE
         )
 
     # -------------------------------------------------
     # DASHBOARD
     # -------------------------------------------------
-    def dashboard_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
-
-        title = QLabel("SYSTEM OVERVIEW")
-        title.setStyleSheet("""
-            font-size:30px;
-            font-weight:bold;
-            color:#00ffaa;
-        """)
-        layout.addWidget(title)
-
-        sub = QLabel(
-            "Professional Steganography • Encryption • Forensics"
-        )
-        sub.setStyleSheet("color:#88ffee;font-size:13pt;")
-        layout.addWidget(sub)
-
-        # Cards
-        row = QHBoxLayout()
-
-        def card(name, val):
-            box = QFrame()
-            box.setStyleSheet("""
-                background:#0c2235;
-                border:1px solid #00ffaa;
-                border-radius:12px;
-            """)
-            box.setMinimumHeight(95)
-
-            v = QVBoxLayout(box)
-            v.addWidget(QLabel(name))
-
-            num = QLabel(str(val))
-            num.setStyleSheet("""
-                font-size:22px;
-                font-weight:bold;
-                color:white;
-            """)
-
-            v.addWidget(num)
-            return box
-
-        row.addWidget(card("Algorithms", "3"))
-        row.addWidget(card("Encryption", "4"))
-        row.addWidget(card("Platform", platform.system()))
-        row.addWidget(card("Status", "READY"))
-
-        layout.addLayout(row)
-
-        # Buttons
-        btns = QHBoxLayout()
-
-        b1 = QPushButton("Embed")
-        b2 = QPushButton("Extract")
-        b3 = QPushButton("Compare")
-        b4 = QPushButton("Theme")
-
-        b1.clicked.connect(lambda: self.nav.setCurrentRow(1))
-        b2.clicked.connect(lambda: self.nav.setCurrentRow(2))
-        b3.clicked.connect(lambda: self.nav.setCurrentRow(3))
-        b4.clicked.connect(self.toggle_theme)
-
-        btns.addWidget(b1)
-        btns.addWidget(b2)
-        btns.addWidget(b3)
-        btns.addWidget(b4)
-
-        layout.addLayout(btns)
-
-        lower = QHBoxLayout()
-
-        tips = QTextEdit()
-        tips.setReadOnly(True)
-        tips.setText(
-            "TODAY'S TIPS\n\n"
-            "• PNG gives best quality\n"
-            "• AES strongest encryption\n"
-            "• Compare after embed\n"
-            "• Use large images"
-        )
-
-        info = QTextEdit()
-        info.setReadOnly(True)
-        info.setText(
-            f"SYSTEM INFO\n\n"
-            f"OS: {platform.system()}\n"
-            f"Python: {platform.python_version()}\n"
-            f"Folder:\n{os.getcwd()}"
-        )
-
-        lower.addWidget(tips)
-        lower.addWidget(info)
-
-        layout.addLayout(lower)
-        layout.addStretch()
-        return page
 
     # -------------------------------------------------
     # EMBED
     # -------------------------------------------------
-    def embed_page(self):
-        page = QWidget()
-        form = QFormLayout(page)
-
-        self.cover_path = QLineEdit()
-
-        browse = QPushButton("Browse Cover")
-        browse.clicked.connect(self.pick_cover)
-
-        self.secret_box = QTextEdit()
-
-        self.output_path = QLineEdit("output.png")
-
-        self.algorithm = QComboBox()
-        self.algorithm.addItems(
-            ["lsb", "adaptive_lsb", "pvd"]
-        )
-
-        self.crypto = QComboBox()
-        self.crypto.addItems(
-            ["aes", "chacha20", "xor", "fernet"]
-        )
-
-        self.key = QLineEdit()
-        self.key.textChanged.connect(
-            self.check_password
-        )
-
-        self.pass_label = QLabel(
-            "Password Strength: N/A"
-        )
-
-        self.capacity_label = QLabel(
-            "Capacity: Select image"
-        )
-
-        run = QPushButton("Embed Secret")
-        run.clicked.connect(self.embed_action)
-
-        form.addRow("Cover:", self.cover_path)
-        form.addRow("", browse)
-        form.addRow("Secret:", self.secret_box)
-        form.addRow("Algorithm:", self.algorithm)
-        form.addRow("Encryption:", self.crypto)
-        form.addRow("Key:", self.key)
-        form.addRow("", self.pass_label)
-        form.addRow("Output:", self.output_path)
-        form.addRow("", self.capacity_label)
-        form.addRow(run)
-
-        return page
 
     # -------------------------------------------------
     # EXTRACT
     # -------------------------------------------------
-    def extract_page(self):
-        page = QWidget()
-        form = QFormLayout(page)
-
-        self.stego_path = QLineEdit()
-
-        browse = QPushButton("Browse Stego")
-        browse.clicked.connect(self.pick_stego)
-
-        self.extract_alg = QComboBox()
-        self.extract_alg.addItems(
-            ["lsb", "adaptive_lsb", "pvd"]
-        )
-
-        self.extract_key = QLineEdit()
-
-        self.result_box = QTextEdit()
-
-        run = QPushButton("Extract Secret")
-        run.clicked.connect(self.extract_action)
-
-        save = QPushButton("Save Text")
-        save.clicked.connect(self.save_extracted)
-
-        form.addRow("Stego:", self.stego_path)
-        form.addRow("", browse)
-        form.addRow("Algorithm:", self.extract_alg)
-        form.addRow("Key:", self.extract_key)
-        form.addRow(run)
-        form.addRow(save)
-        form.addRow(self.result_box)
-
-        return page
 
     # -------------------------------------------------
     # COMPARE
@@ -410,47 +207,7 @@ class KalyptoElite(QMainWindow):
     # -------------------------------------------------
     # ABOUT
     # -------------------------------------------------
-    def about_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
-
-        title = QLabel("ABOUT KALYPTO")
-        title.setStyleSheet("""
-            font-size:28px;
-            font-weight:bold;
-            color:#00ffaa;
-        """)
-        layout.addWidget(title)
-
-        txt = QTextEdit()
-        txt.setReadOnly(True)
-        txt.setText(
-            "Kalypto Elite\n\n"
-            "Advanced Steganography Suite\n\n"
-            "Features:\n"
-            "- Embed / Extract Secrets\n"
-            "- Encryption\n"
-            "- Compare Lab\n"
-            "- Heatmaps\n"
-            "- Bit Plane Analysis\n\n"
-            "GitHub:\n"
-            "https://github.com/VisheshDuttSharma/Kalypto"
-        )
-
-        layout.addWidget(txt)
-
-        btn = QPushButton("Open GitHub")
-        btn.clicked.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl(
-                    "https://github.com/VisheshDuttSharma/Kalypto"
-                )
-            )
-        )
-
-        layout.addWidget(btn)
-        layout.addStretch()
-        return page
+    
 
     # -------------------------------------------------
     # FILE HELPERS
@@ -515,52 +272,34 @@ class KalyptoElite(QMainWindow):
     # CORE ACTIONS
     # -------------------------------------------------
     def embed_action(self):
-        try:
-            cfg = PipelineConfig(
-                algorithm=self.algorithm.currentText(),
-                encrypt=bool(self.key.text()),
-                crypto_algo=self.crypto.currentText(),
-                key=self.key.text() or "defaultkey"
-            )
 
-            StegoPipeline(cfg).encode(
-                self.cover_path.text(),
-                self.secret_box.toPlainText(),
-                self.output_path.text()
-            )
+        self.embed_controller.start_embed()
 
-            self.load_compare(
-                self.cover_path.text(),
-                self.output_path.text()
-            )
-
-            self.nav.setCurrentRow(3)
-            self.add_log("Secret embedded")
-
-        except Exception as e:
-            QMessageBox.critical(
-                self, "Error", str(e)
-            )
 
     def extract_action(self):
-        try:
-            cfg = PipelineConfig(
-                algorithm=self.extract_alg.currentText(),
-                encrypt=bool(self.extract_key.text()),
-                key=self.extract_key.text() or "defaultkey"
-            )
 
-            result = StegoPipeline(cfg).decode(
-                self.stego_path.text()
+        try:
+
+            result = self.stego_service.extract(
+                algorithm=self.extract_alg.currentText(),
+                key=self.extract_key.text(),
+                stego_path=self.stego_path.text()
             )
 
             self.result_box.setText(result)
-            self.add_log("Secret extracted")
+
+            self.add_log(
+                "Secret extracted"
+            )
 
         except Exception as e:
+
             QMessageBox.critical(
-                self, "Error", str(e)
+                self,
+                "Error",
+                str(e)
             )
+
 
     def save_extracted(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -577,75 +316,134 @@ class KalyptoElite(QMainWindow):
     # -------------------------------------------------
     # COMPARE TOOLS
     # -------------------------------------------------
+    # -------------------------------------------------
+
     def update_zoom(self):
         size = self.zoom.value()
 
-        if hasattr(self, "last_original"):
+        if self.state.last_original:
             self.original_label.setPixmap(
-                load_pix(self.last_original, size, size)
+                load_pix(
+                    self.state.last_original,
+                    size,
+                    size
+                )
             )
 
-        if hasattr(self, "last_stego"):
+        if self.state.last_stego:
             self.stego_label.setPixmap(
-                load_pix(self.last_stego, size, size)
+                load_pix(
+                    self.state.last_stego,
+                    size,
+                    size
+                )
             )
+
 
     def render_bitplane(self):
-        if not hasattr(self, "last_stego"):
+
+        if not self.state.last_stego:
             return
 
         bit = self.bit_combo.currentIndex()
 
-        img = Image.open(self.last_stego).convert("L")
-        px = img.load()
-        w, h = img.size
+        output = self.compare_service.generate_bitplane(
+            self.state.last_stego,
+            bit
+        )
 
-        plane = Image.new("L", (w, h))
+        self.bit_label.set_image(output)
 
-        for y in range(h):
-            for x in range(w):
-                val = (px[x, y] >> bit) & 1
-                plane.putpixel(
-                    (x, y),
-                    255 if val else 0
-                )
-
-        plane.save("bitplane.png")
-
-        self.bit_label.set_image("bitplane.png")
 
     def load_compare(self, original, stego):
-        self.last_original = original
-        self.last_stego = stego
 
-        self.original_label.set_image(original)
-        
-        self.stego_label.set_image(stego)
+        self.state.last_original = original
+        self.state.last_stego = stego
 
-        heatmap_path = generate_heatmap(original, stego)
+        self.add_log(
+            "Generating compare analysis..."
+        )
 
-        self.heat_label.set_image(heatmap_path)
+        self.compare_thread = QThread()
+
+        self.compare_worker = CompareWorker(
+            self.compare_service,
+            original,
+            stego
+        )
+
+        self.compare_worker.moveToThread(
+            self.compare_thread
+        )
+
+        self.compare_thread.started.connect(
+            self.compare_worker.run
+        )
+
+        self.compare_worker.finished.connect(
+            self.compare_finished
+        )
+
+        self.compare_worker.error.connect(
+            self.compare_error
+        )
+
+        self.compare_worker.finished.connect(
+            self.compare_thread.quit
+        )
+
+        self.compare_worker.finished.connect(
+            self.compare_worker.deleteLater
+        )
+
+        self.compare_thread.finished.connect(
+            self.compare_thread.deleteLater
+        )
+
+        self.compare_thread.start()
+
+
+    def compare_finished(
+        self,
+        original,
+        stego,
+        heatmap_path,
+        report
+    ):
+
+        self.original_label.set_image(
+            original
+        )
+
+        self.stego_label.set_image(
+            stego
+        )
+
+        self.heat_label.set_image(
+            heatmap_path
+        )
 
         self.render_bitplane()
 
-        self.report_box.setText(
-            f"Original: {original}\n"
-            f"Stego: {stego}\n"
-            f"Original Size: {os.path.getsize(original)}\n"
-            f"Stego Size: {os.path.getsize(stego)}"
+        self.report_box.setText(report)
+
+        self.add_log(
+            "Compare analysis complete"
+        )
+
+
+    def compare_error(self, msg):
+
+        QMessageBox.critical(
+            self,
+            "Compare Error",
+            msg
         )
 
     # -------------------------------------------------
     # PDF
     # -------------------------------------------------
     def export_pdf(self):
-        if not PDF_ENABLED:
-            QMessageBox.warning(
-                self,
-                "Missing Package",
-                "Install reportlab to export PDF"
-            )
-            return
 
         path, _ = QFileDialog.getSaveFileName(
             self,
@@ -657,19 +455,12 @@ class KalyptoElite(QMainWindow):
         if not path:
             return
 
-        c = canvas.Canvas(path, pagesize=A4)
+        self.export_service.export_pdf(
+            self.report_box.toPlainText(),
+            path
+        )
 
-        c.setFont("Helvetica-Bold", 18)
-        c.drawString(50, 800, "Kalypto Report")
-
-        c.setFont("Helvetica", 12)
-
-        y = 760
-        for line in self.report_box.toPlainText().split("\n"):
-            c.drawString(50, y, line[:95])
-            y -= 20
-
-        c.save()
+        self.add_log("PDF exported")
 
 # =====================================================
 # MAIN

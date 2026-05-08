@@ -60,11 +60,7 @@ class StegoPipeline:
 
         # Accept str or bytes
         if isinstance(message, str):
-            try:
-                # If file payload (base64)
-                data = base64.b64decode(message)
-            except Exception:
-                data = message.encode()
+            data = message.encode()
 
         elif isinstance(message, bytes):
             data = message

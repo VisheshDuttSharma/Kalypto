@@ -1,93 +1,164 @@
-# Kalypto  
+# Kalypto
 
-Kalypto is a modular steganography framework for covert data embedding within digital media. The current implementation focuses on spatial-domain image steganography, incorporating multiple embedding strategies with an emphasis on imperceptibility, payload capacity, and extensibility.  
+Kalypto is a modular steganography and cryptography desktop application built with Python and PySide6.
 
-## Overview  
+The project focuses on secure payload embedding inside images using multiple steganographic techniques combined with layered cryptographic protection.
 
-Steganography enables hidden communication by embedding secret data within benign carrier files. Unlike cryptography, which obscures content, steganography conceals the very existence of the message.  
+---
 
-Kalypto implements multiple spatial-domain techniques to manipulate pixel-level data while preserving perceptual quality, making detection difficult through human observation and basic statistical analysis.  
+## Features
 
-## Version 1.1 — Enhancements  
+### Steganography Algorithms
+- LSB (Least Significant Bit)
+- Adaptive LSB
+- PVD (Pixel Value Differencing)
 
-Kalypto now includes an integrated encryption layer and file-based payload handling, significantly improving reliability and practical usability.  
+### Encryption Algorithms
+- AES
+- ChaCha20
+- XOR
+- Fernet
 
-The system supports multiple encryption algorithms including AES, ChaCha20, XOR, and Fernet. Users can either manually select an encryption method or allow the system to automatically choose one based on the nature of the input data.  
+### Analysis and Utility Tools
+- Heatmap Visualization
+- Bitplane Analysis
+- Image Comparison
+- Payload Capacity Validation
 
-File-based payload input is now supported. The system can ingest content from formats such as .txt, .csv, .json, .pdf, and .docx (text extraction). File types are automatically detected, and encryption strategies can adapt accordingly.  
+### Architecture Features
+- Modular service-based structure
+- Worker-threaded processing
+- PySide6 desktop interface
+- Automated testing suite
+- Configurable processing pipeline
 
-The internal pipeline has been improved to ensure reliable handling of encrypted data. The previous delimiter-based extraction mechanism has been removed and replaced with a fixed-length header system, ensuring accurate payload reconstruction. Data loss issues caused by unsafe string decoding have been resolved using a base64-based transport layer.  
+---
 
-## Core Capabilities  
+## Project Structure
 
-Kalypto supports multiple spatial-domain steganography techniques:  
+```text
+Kalypto/
+│
+├── controllers/
+├── core/
+├── crypto/
+├── engine/
+├── services/
+├── tests/
+├── ui/
+├── utils/
+├── widgets/
+├── workers/
+│
+├── main_interface.py
+├── requirements.txt
+└── README.md
+````
 
-Least Significant Bit (LSB)  
-Adaptive LSB  
-Pixel Value Differencing (PVD)  
+---
 
-The system provides a bidirectional pipeline for:  
+## Technologies Used
 
-Payload embedding (encoding)  
-Payload extraction (decoding)  
+* Python 3.11
+* PySide6
+* Pillow
+* NumPy
+* OpenCV
+* Pytest
+* PyCryptodome
 
-It is designed with a modular architecture, allowing seamless integration of additional algorithms, domains, and processing layers.  
+---
 
-## Architecture  
-Kalypto/  
-│  
-├── core/  
-│   └── spatial/        # LSB, Adaptive LSB, PVD implementations  
-│  
-├── crypto/             # Encryption modules (AES, ChaCha20, XOR, Fernet)  
-│  
-├── engine/             # Encoding and decoding pipeline  
-│  
-├── utils/              # File handling and helper utilities  
-│  
-├── main_interface.py   # CLI entry point  
-│  
-└── assets/             # Input and output resources  
-## Technical Implementation  
+## Installation
 
-Least Significant Bit (LSB) replaces the least significant bits of pixel values, introducing minimal visual distortion while maintaining linear time complexity.  
+Clone repository:
 
-Adaptive LSB dynamically adjusts embedding strategies based on local pixel characteristics, improving imperceptibility and reducing statistical detectability.  
-
-Pixel Value Differencing (PVD) uses the difference between adjacent pixel values to determine embedding capacity, balancing payload size and image quality.  
-
-## Data Flow
-Input File → Preprocessing → Encryption → Embedding → Stego Image  
-Stego Image → Extraction → Decryption → Output  
-Usage  
-
-Run the CLI interface:  
+```bash
+git clone https://github.com/VisheshDuttSharma/Kalypto.git
+cd Kalypto
 ```
-python -m main_interface  
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
 ```
-Ensure that input files and images are placed in the appropriate directories within the project.  
 
-## Dependencies  
+Run application:
+
+```bash
+python main_interface.py
 ```
-pip install pillow pycryptodome cryptography
+
+---
+
+## Testing
+
+Run automated tests:
+
+```bash
+pytest
 ```
-## Current Limitations  
 
-The current system is not fully binary-safe. It relies on base64 encoding as an intermediate layer to safely transport data through the steganography pipeline. This introduces overhead and limits efficiency when handling large binary files such as videos, archives, or executables.
+Current test suite validates:
 
-## Roadmap  
+* Embed and extract integrity
+* Unicode payload handling
+* Wrong-key behavior
+* Invalid input rejection
+* Corrupted image handling
+* Payload capacity validation
+* Multi-algorithm verification
 
-The next phase of development focuses on implementing true binary steganography. This will involve direct byte-level embedding, removal of base64 dependency, and full support for arbitrary file types including .mp4, .zip, and .exe.
+---
 
-Future enhancements include transform-domain techniques such as Discrete Cosine Transform (DCT) and Discrete Wavelet Transform (DWT), multimedia steganography for audio and video, hybrid encryption models combining AES and RSA, and steganalysis capabilities including PSNR and chi-square evaluation.
+## Architecture Overview
 
-## Security Perspective  
+Kalypto uses a modular architecture where:
 
-Kalypto is designed with a cybersecurity-oriented approach, focusing on covert communication techniques, resistance to detection mechanisms, and applicability in both offensive and defensive security research.
+* UI logic is separated into page modules
+* Processing logic is handled through services
+* Long-running operations use worker threads
+* Cryptographic operations are isolated from the UI layer
+* Steganography algorithms are independently pluggable
 
-## Status  
+---
 
-Active development. Spatial steganography, encryption integration, and file-based payload handling are implemented. Binary steganography and advanced modules are currently in progress.
+## Supported Algorithms
 
-## Author  
+### Steganography
+
+| Algorithm    | Status |
+| ------------ | ------ |
+| LSB          | Stable |
+| Adaptive LSB | Stable |
+| PVD          | Stable |
+
+### Encryption
+
+| Algorithm | Status |
+| --------- | ------ |
+| AES       | Stable |
+| ChaCha20  | Stable |
+| XOR       | Stable |
+| Fernet    | Stable |
+
+---
+
+## Future Improvements
+
+* File embedding support
+* Authenticated encryption
+* Metadata wiping
+* Executable packaging
+* Enhanced steganalysis resistance
+* Improved UI/UX
+
+---
+
+## Author
+
 Vishesh Dutt Sharma
+
+GitHub:
+[https://github.com/VisheshDuttSharma](https://github.com/VisheshDuttSharma)

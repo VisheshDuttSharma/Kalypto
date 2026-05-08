@@ -11,6 +11,8 @@ from PIL import ImageFilter
 import matplotlib.pyplot as plt
 from termcolor import colored
 
+from utils.temp_manager import temp_file
+
 def load_pix(path, w=600, h=450):
 
     if os.path.exists(path):
@@ -28,7 +30,7 @@ def load_pix(path, w=600, h=450):
 def generate_heatmap(
     original,
     stego,
-    output="temp/heatmap.png"
+    out = temp_file(".png")
 ):
 
     img1 = Image.open(original).convert("RGB")
@@ -75,15 +77,15 @@ def generate_heatmap(
 
     final_img = Image.fromarray(final.astype(np.uint8))
 
-    final_img.save(output)
+    final_img.save(out)
 
-    return output
+    return out
 
 
 def generate_bitplane(
     image_path,
     bit=0,
-    output="temp/bitplane.png"
+    output=None
 ):
 
     img = Image.open(image_path).convert("L")
