@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
@@ -9,6 +11,10 @@ class ExportService:
         report_text,
         output_path
     ):
+
+        output_path = str(
+            Path(output_path)
+        )
 
         c = canvas.Canvas(
             output_path,
@@ -28,19 +34,32 @@ class ExportService:
 
         c.setFont(
             "Helvetica",
-            12
+            11
         )
 
         y = 760
 
-        for line in report_text.split("\n"):
+        for line in report_text.splitlines():
 
             c.drawString(
                 50,
                 y,
-                line[:95]
+                line[:110]
             )
 
-            y -= 20
+            y -= 18
+
+            if y < 50:
+
+                c.showPage()
+
+                c.setFont(
+                    "Helvetica",
+                    11
+                )
+
+                y = 800
 
         c.save()
+
+        return output_path

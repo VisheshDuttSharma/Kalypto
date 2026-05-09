@@ -1,30 +1,38 @@
-from pathlib import Path
+import pytest
 
 from services.stego_service import (
     StegoService
 )
 
 
-def test_embed_extract():
+@pytest.mark.parametrize(
+    "crypto",
+    [
+        "aes",
+        "xor",
+        "chacha20"
+    ]
+)
+def test_multiple_crypto(
+    crypto
+):
 
     service = StegoService()
 
     input_img = "tests/assets/test.png"
 
-    output_img = "temp/test_output.png"
+    output_img = f"temp/{crypto}_output.png"
 
-    secret = "hello world"
+    secret = f"secret using {crypto}"
 
     service.embed(
         algorithm="lsb",
-        crypto="aes",
+        crypto=crypto,
         key="test123",
         cover_path=input_img,
         secret=secret,
         output_path=output_img
     )
-
-    assert Path(output_img).exists()
 
     result = service.extract(
         algorithm="lsb",

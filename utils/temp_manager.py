@@ -1,43 +1,14 @@
-import os
-import uuid
+from pathlib import Path
+import shutil
 
+TEMP_DIR = Path("temp")
+TEMP_DIR.mkdir(exist_ok=True)
 
-TEMP_DIR = "temp"
-
-
-def ensure_temp():
-
-    os.makedirs(
-        TEMP_DIR,
-        exist_ok=True
-    )
-
-
-def temp_file(ext=".png"):
-
-    ensure_temp()
-
-    name = f"{uuid.uuid4().hex}{ext}"
-
-    return os.path.join(
-        TEMP_DIR,
-        name
-    )
-
+def temp_file(name: str):
+    return TEMP_DIR / name
 
 def clear_temp():
+    if TEMP_DIR.exists():
+        shutil.rmtree(TEMP_DIR)
 
-    ensure_temp()
-
-    for file in os.listdir(TEMP_DIR):
-
-        path = os.path.join(
-            TEMP_DIR,
-            file
-        )
-
-        try:
-            os.remove(path)
-
-        except:
-            pass
+    TEMP_DIR.mkdir(exist_ok=True)

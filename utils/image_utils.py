@@ -1,21 +1,20 @@
-import os
+from pathlib import Path
 import numpy as np
 
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 
 from PIL import Image
-from PIL import ImageChops
-from PIL import ImageOps
 from PIL import ImageFilter
-import matplotlib.pyplot as plt
-from termcolor import colored
 
 from utils.temp_manager import temp_file
 
+
 def load_pix(path, w=600, h=450):
 
-    if os.path.exists(path):
+    path = str(Path(path))
+
+    if Path(path).exists():
 
         return QPixmap(path).scaled(
             w,
@@ -30,8 +29,11 @@ def load_pix(path, w=600, h=450):
 def generate_heatmap(
     original,
     stego,
-    out = temp_file(".png")
+    out=None
 ):
+
+    if out is None:
+        out = temp_file("heatmap.png")
 
     img1 = Image.open(original).convert("RGB")
     img2 = Image.open(stego).convert("RGB")
@@ -39,47 +41,41 @@ def generate_heatmap(
     arr1 = np.array(img1).astype(np.int16)
     arr2 = np.array(img2).astype(np.int16)
 
-    # Pixel difference
     diff = np.abs(arr1 - arr2)
 
-    # Collapse channels
     diff = diff.mean(axis=2)
 
-    # MASSIVE amplification
     diff = diff * 120
 
     diff = np.clip(diff, 0, 255)
 
     diff = diff.astype(np.uint8)
 
-    # Smooth gradients
     heat = Image.fromarray(diff)
     heat = heat.filter(ImageFilter.GaussianBlur(radius=6))
 
     heat_np = np.array(heat)
 
-    # Thermal colormap
-    colored = np.zeros((heat_np.shape[0], heat_np.shape[1], 3), dtype=np.uint8)
+    colored_map = np.zeros(
+        (heat_np.shape[0], heat_np.shape[1], 3),
+        dtype=np.uint8
+    )
 
-# Bright forensic glow
-    colored[:, :, 0] = np.clip(heat_np * 2, 0, 255)        # Red
-    colored[:, :, 1] = np.clip(heat_np * 0.3, 0, 255)      # Green
-    colored[:, :, 2] = np.clip(255 - heat_np, 0, 255)      # Blue
+    colored_map[:, :, 0] = np.clip(heat_np * 2, 0, 255)
+    colored_map[:, :, 1] = np.clip(heat_np * 0.3, 0, 255)
+    colored_map[:, :, 2] = np.clip(255 - heat_np, 0, 255)
 
-    # ORIGINAL IMAGE AS SILHOUETTE
     base = np.array(img1).astype(np.uint8)
 
-    # Darken original image heavily
     base = (base * 0.25).astype(np.uint8)
 
-    # Blend heatmap with silhouette
-    final = np.clip(base + colored, 0, 255)
+    final = np.clip(base + colored_map, 0, 255)
 
     final_img = Image.fromarray(final.astype(np.uint8))
 
-    final_img.save(out)
+    final_img.save(str(out))
 
-    return out
+    return str(out)
 
 
 def generate_bitplane(
@@ -87,6 +83,9 @@ def generate_bitplane(
     bit=0,
     output=None
 ):
+
+    if output is None:
+        output = temp_file(f"bitplane_{bit}.png")
 
     img = Image.open(image_path).convert("L")
 
@@ -107,6 +106,6 @@ def generate_bitplane(
                 255 if val else 0
             )
 
-    plane.save(output)
+    plane.save(str(output))
 
-    return output
+    return str(output)

@@ -1,11 +1,7 @@
-from PySide6.QtCore import QThread
+from PySide6.QtWidgets import QMessageBox
 
 from workers.embed_worker import (
     EmbedWorker
-)
-
-from PySide6.QtWidgets import (
-    QMessageBox
 )
 
 
@@ -33,53 +29,38 @@ class EmbedController:
             "Embedding started..."
         )
 
-        self.thread = QThread()
+        try:
 
-        self.worker = EmbedWorker(
-            service=self.stego_service,
+            worker = EmbedWorker(
+                service=self.stego_service,
 
-            algorithm=self.win.algorithm.currentText(),
+                algorithm=self.win.algorithm.currentText(),
 
-            crypto=self.win.crypto.currentText(),
+                crypto=self.win.crypto.currentText(),
 
-            key=self.win.key.text(),
+                key=self.win.key.text(),
 
-            cover_path=self.win.cover_path.text(),
+                cover_path=self.win.cover_path.text(),
 
-            secret=self.win.secret_box.toPlainText(),
+                secret=self.win.secret_box.toPlainText(),
 
-            output_path=self.win.output_path.text()
-        )
+                output_path=self.win.output_path.text()
+            )
 
-        self.worker.moveToThread(
-            self.thread
-        )
+            output = self.stego_service.embed(
+                algorithm=worker.algorithm,
+                crypto=worker.crypto,
+                key=worker.key,
+                cover_path=worker.cover_path,
+                secret=worker.secret,
+                output_path=worker.output_path
+            )
 
-        self.thread.started.connect(
-            self.worker.run
-        )
+            self.embed_finished(output)
 
-        self.worker.finished.connect(
-            self.embed_finished
-        )
+        except Exception as e:
 
-        self.worker.error.connect(
-            self.embed_error
-        )
-
-        self.worker.finished.connect(
-            self.thread.quit
-        )
-
-        self.worker.finished.connect(
-            self.worker.deleteLater
-        )
-
-        self.thread.finished.connect(
-            self.thread.deleteLater
-        )
-
-        self.thread.start()
+            self.embed_error(str(e))
 
     def embed_finished(
         self,

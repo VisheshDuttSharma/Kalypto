@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
@@ -16,6 +18,8 @@ class SmartImageLabel(QLabel):
         self.original_pixmap = None
 
     def set_image(self, path):
+
+        path = str(Path(path))
 
         pixmap = QPixmap(path)
 

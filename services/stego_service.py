@@ -1,7 +1,14 @@
+from pathlib import Path
+
+from PIL import (
+    UnidentifiedImageError
+)
+
 from engine.pipeline import (
     StegoPipeline,
     PipelineConfig
 )
+
 
 class StegoService:
 
@@ -15,25 +22,27 @@ class StegoService:
         output_path
     ):
 
-        if not secret.strip():
+        if not secret:
             raise ValueError(
                 "Secret message cannot be empty."
             )
+
         cfg = PipelineConfig(
             algorithm=algorithm,
-            encrypt=bool(key),
+            encrypt=True,
             crypto_algo=crypto,
-            key=key or "defaultkey"
+            key=key
         )
 
-        StegoPipeline(cfg).encode(
-            cover_path,
+        pipeline = StegoPipeline(cfg)
+
+        pipeline.encode(
+            str(Path(cover_path)),
             secret,
-            output_path
+            str(Path(output_path))
         )
 
-        return output_path
-
+        return str(Path(output_path))
 
     def extract(
         self,
@@ -42,14 +51,27 @@ class StegoService:
         stego_path
     ):
 
-        cfg = PipelineConfig(
-            algorithm=algorithm,
-            encrypt=bool(key),
-            key=key or "defaultkey"
-        )
+        try:
 
-        result = StegoPipeline(cfg).decode(
-            stego_path
-        )
+            cfg = PipelineConfig(
+                algorithm=algorithm,
+                encrypt=True,
+                key=key
+            )
 
-        return result
+            pipeline = StegoPipeline(cfg)
+
+            result = pipeline.decode(
+                str(Path(stego_path))
+            )
+
+            return result
+
+        except (
+            FileNotFoundError,
+            ValueError,
+            UnidentifiedImageError,
+            OSError
+        ):
+
+            return None
